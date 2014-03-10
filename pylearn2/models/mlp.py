@@ -24,7 +24,6 @@ from pylearn2.expr.probabilistic_max_pooling import max_pool_channels
 from pylearn2.linear import conv2d
 from pylearn2.linear.matrixmul import MatrixMul
 from pylearn2.models.model import Model
-from pylearn2.monitor import get_monitor_doc
 from pylearn2.expr.nnet import pseudoinverse_softmax_numpy
 from pylearn2.space import CompositeSpace
 from pylearn2.space import Conv2DSpace
@@ -76,11 +75,8 @@ class Layer(Model):
 
     def get_mlp(self):
         """
-        Returns
-        -------
-        mlp : MLP
-            The MLP that this layer belongs to, or None if it has not been
-            assigned to an MLP yet.
+        Returns the MLP that this layer belongs to, or None
+        if it has not been assigned to an MLP yet.
         """
 
         if hasattr(self, 'mlp'):
@@ -90,53 +86,39 @@ class Layer(Model):
 
     def set_mlp(self, mlp):
         """
-        Assigns this layer to an MLP. This layer will then use the MLP's
-        random number generator, batch size, etc. This layer's name must
-        be unique within the MLP.
+        Assigns this layer to an MLP.
 
         Parameters
         ----------
-        mlp : MLP
+        mlp : WRITEME
         """
         assert self.get_mlp() is None
         self.mlp = mlp
 
+    def get_monitoring_channels(self):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        return OrderedDict()
+
     def get_monitoring_channels_from_state(self, state, target=None):
         """
-        Parameters
-        ----------
-        state : member of self.output_space
-            A minibatch of states that this Layer took on during fprop.
-            Provided externally so that we don't need to make a second
-            expression for it. This helps keep the Theano graph smaller
-            so that function compilation runs faster.
-        target : member of self.output_space
-            Should be None unless this is the last layer.
-            If specified, it should be a minibatch of targets for the
-            last layer.
+        .. todo::
 
-        Returns
-        -------
-        channels : OrderedDict
-            A dictionary mapping channel names to monitoring channels of
-            interest for this layer.
+            WRITEME
         """
-
         return OrderedDict()
 
     def fprop(self, state_below):
         """
         Does the forward prop transformation for this layer.
+        state_below is a minibatch of states for the previous layer.
 
         Parameters
         ----------
-        state_below : member of self.input_space
-            A minibatch of states of the layer below.
-
-        Returns
-        -------
-        state : member of self.output_space
-            A minibatch of states of this layer.
+        state_below : WRITEME
         """
 
         raise NotImplementedError(str(type(self))+" does not implement fprop.")
@@ -207,46 +189,27 @@ class Layer(Model):
 
     def set_weights(self, weights):
         """
-        Sets the weights of the layer.
+        .. todo::
 
-        Parameters
-        ----------
-        weights : ndarray
-            A numpy ndarray containing the desired weights of the layer. This
-            docstring is provided by the Layer base class. Layer subclasses
-            should add their own docstring explaining the subclass-specific
-            format of the ndarray.
+            WRITEME
         """
-        raise NotImplementedError(str(type(self)) + " does not implement "
-                "set_weights.")
+        raise NotImplementedError
 
     def get_biases(self):
         """
-        Returns
-        -------
-        biases : ndarray
-            A numpy ndarray containing the biases of the layer. This docstring
-            is provided by the Layer base class. Layer subclasses should add
-            their own docstring explaining the subclass-specific format of the
-            ndarray.
+        .. todo::
+
+            WRITEME
         """
-        raise NotImplementedError(str(type(self)) + " does not implement "
-                "get_biases (perhaps because the class has no biases).")
+        raise NotImplementedError
 
     def set_biases(self, biases):
         """
-        Sets the biases of the layer.
+        .. todo::
 
-        Parameters
-        ----------
-        biases : ndarray
-            A numpy ndarray containing the desired biases of the layer. This
-            docstring is provided by the Layer base class. Layer subclasses
-            should add their own docstring explaining the subclass-specific
-            format of the ndarray.
+            WRITEME
         """
-        raise NotImplementedError(str(type(self)) + " does not implement "
-                "set_biases (perhaps because the class has no biases).")
+        raise NotImplementedError
 
     def get_weights_format(self):
         """
@@ -258,70 +221,31 @@ class Layer(Model):
 
     def get_weight_decay(self, coeff):
         """
-        Provides an expresion for a squared L2 penalty on the weights.
+        .. todo::
 
-        Parameters
-        ----------
-        coeff : float or tuple
-            The coefficient on the weight decay penalty for this layer.
-            This docstring is provided by the Layer base class. Individual
-            Layer subclasses should add their own docstring explaining the
-            format of `coeff` for that particular layer. For most ordinary
-            layers, `coeff` is a single float to multiply by the weight
-            decay term. Layers containing many pieces may take a tuple or
-            nested tuple of floats, and should explain the semantics of
-            the different elements of the tuple.
-
-        Returns
-        -------
-        weight_decay : theano.gof.Variable
-            An expression for the weight decay penalty term for this
-            layer.
+            WRITEME
         """
-        raise NotImplementedError(str(type(self)) + " does not implement "
-                "get_weight_decay.")
+        raise NotImplementedError
 
     def get_l1_weight_decay(self, coeff):
         """
-        Provides an expresion for an L1 penalty on the weights.
+        .. todo::
 
-        Parameters
-        ----------
-        coeff : float or tuple
-            The coefficient on the L1 weight decay penalty for this layer.
-            This docstring is provided by the Layer base class. Individual
-            Layer subclasses should add their own docstring explaining the
-            format of `coeff` for that particular layer. For most ordinary
-            layers, `coeff` is a single float to multiply by the weight
-            decay term. Layers containing many pieces may take a tuple or
-            nested tuple of floats, and should explain the semantics of
-            the different elements of the tuple.
-
-        Returns
-        -------
-        weight_decay : theano.gof.Variable
-            An expression for the L1 weight decay penalty term for this
-            layer.
+            WRITEME
         """
-        raise NotImplementedError(str(type(self)) + " does not implement "
-                "get_l1_weight_decay.")
+        raise NotImplementedError
 
     def set_input_space(self, space):
         """
-        Tells the layer to prepare for input formatted according to the
-        given space.
+        .. todo::
 
-        Parameters
-        ----------
-        space : Space
-            The Space the input to this layer will lie in.
+            WRITEME
 
         Notes
         -----
         This usually resets parameters.
         """
-        raise NotImplementedError(str(type(self)) + " does not implement "
-                "set_input_space.")
+        raise NotImplementedError
 
 
 class MLP(Layer):
@@ -468,16 +392,7 @@ class MLP(Layer):
         for layer in self.layers:
             ch = layer.get_monitoring_channels()
             for key in ch:
-                value = ch[key]
-                doc = get_monitor_doc(value)
-                if doc is None:
-                    doc = str(type(layer)) + ".get_monitoring_channels did" + \
-                            " not provide any further documentation for" + \
-                            " this channel."
-                doc = 'This channel came from a layer called "' + \
-                        layer.layer_name + '" of an MLP.\n' + doc
-                value.__doc__ = doc
-                rval[layer.layer_name+'_'+key] = value
+                rval[layer.layer_name+'_'+key] = ch[key]
             state = layer.fprop(state)
             args = [state]
             if layer is self.layers[-1]:
@@ -486,17 +401,7 @@ class MLP(Layer):
             if not isinstance(ch, OrderedDict):
                 raise TypeError(str((type(ch), layer.layer_name)))
             for key in ch:
-                value = ch[key]
-                doc = get_monitor_doc(value)
-                if doc is None:
-                    doc = str(type(layer)) + \
-                            ".get_monitoring_channels_from_state did" + \
-                            " not provide any further documentation for" + \
-                            " this channel."
-                doc = 'This channel came from a layer called "' + \
-                        layer.layer_name + '" of an MLP.\n' + doc
-                value.__doc__ = doc
-                rval[layer.layer_name+'_'+key] = value
+                rval[layer.layer_name+'_'+key] = ch[key]
 
         return rval
 
@@ -918,8 +823,6 @@ class Softmax(Layer):
                  no_affine=False,
                  max_col_norm=None, init_bias_target_marginals=None):
 
-        super(Softmax, self).__init__()
-
         if isinstance(W_lr_scale, str):
             W_lr_scale = float(W_lr_scale)
 
@@ -1099,6 +1002,13 @@ class Softmax(Layer):
         if self.needs_reformat:
             state_below = self.input_space.format_as(state_below,
                                                      self.desired_space)
+
+        for value in get_debug_values(state_below):
+            if self.mlp.batch_size is not None and \
+               value.shape[0] != self.mlp.batch_size:
+                raise ValueError("state_below should have batch size " +
+                                 str(self.dbm.batch_size) +
+                                 " but has " + str(value.shape[0]))
 
         self.desired_space.validate(state_below)
         assert state_below.ndim == 2
@@ -1529,6 +1439,15 @@ class SoftmaxPool(Layer):
         self.input_space.validate(state_below)
 
         if self.requires_reformat:
+            if not isinstance(state_below, tuple):
+                for sb in get_debug_values(state_below):
+                    if sb.shape[0] != self.dbm.batch_size:
+                        raise ValueError("self.dbm.batch_size is %d but got "
+                                         "shape of %d" % (self.dbm.batch_size,
+                                                          sb.shape[0]))
+                    assert (reduce(lambda x, y: x * y, sb.shape[1:]) ==
+                            self.input_dim)
+
             state_below = self.input_space.format_as(state_below,
                                                      self.desired_space)
 
@@ -1626,7 +1545,7 @@ class Linear(Layer):
                  max_row_norm=None,
                  max_col_norm=None,
                  min_col_norm=None,
-                 softmax_columns=None,
+                 softmax_columns=False,
                  copy_input=0,
                  use_abs_loss=False,
                  use_bias=True):
@@ -1912,18 +1831,23 @@ class Linear(Layer):
 
     def _linear_part(self, state_below):
         """
-        Parameters
-        ----------
-        state_below : member of input_space
+        .. todo::
 
-        Returns
-        -------
-        output : theano matrix
-            Affine transformation of state_below
+            WRITEME
         """
+        # TODO: Refactor More Better(tm)
         self.input_space.validate(state_below)
 
         if self.requires_reformat:
+            if not isinstance(state_below, tuple):
+                for sb in get_debug_values(state_below):
+                    if sb.shape[0] != self.dbm.batch_size:
+                        raise ValueError("self.dbm.batch_size is %d but got "
+                                         "shape of %d" % (self.dbm.batch_size,
+                                                          sb.shape[0]))
+                    assert (reduce(lambda x, y: x * y, sb.shape[1:]) ==
+                            self.input_dim)
+
             state_below = self.input_space.format_as(state_below,
                                                      self.desired_space)
 
@@ -1943,17 +1867,16 @@ class Linear(Layer):
             z = self.transformer.lmul(state_below)
             if self.use_bias:
                 z += self.b
-
         if self.layer_name is not None:
             z.name = self.layer_name + '_z'
-
         if self.copy_input:
             z = T.concatenate((z, state_below), axis=1)
-
         return z
 
     @wraps(Layer.fprop)
     def fprop(self, state_below):
+
+        # TODO: Refactor More Better(tm)
         p = self._linear_part(state_below)
         return p
 
@@ -2312,6 +2235,7 @@ class ConvRectifiedLinear(Layer):
                  kernel_stride=(1, 1)):
         super(ConvRectifiedLinear, self).__init__()
 
+
         if (irange is None) and (sparse_init is None):
             raise AssertionError("You should specify either irange or "
                                  "sparse_init when calling the constructor of "
@@ -2563,6 +2487,51 @@ class ConvRectifiedLinear(Layer):
             p = self.output_normalization(p)
 
         return p
+
+    @wraps(Layer.get_default_cost)
+    def get_default_cost(self):
+        return Default()
+
+    @wraps(Layer.cost)
+    def cost(self, Y, Y_hat):
+        print 'using new cost'
+        return self.cost_from_cost_matrix(self.cost_matrix(Y, Y_hat))
+
+    @wraps(Layer.cost_from_cost_matrix)
+    def cost_from_cost_matrix(self, cost_matrix):
+        return cost_matrix.sum(axis=1).mean()
+
+    @wraps(Layer.cost_matrix)
+    def cost_matrix(self, Y, Y_hat):
+        return T.sqr(Y - Y_hat)
+
+    def cost_from_X(self, data):
+        """
+        Computes self.cost, but takes data=(X, Y) rather than Y_hat as an
+        argument.
+
+        This is just a wrapper around self.cost that computes Y_hat by
+        calling Y_hat = self.fprop(X)
+
+        Parameters
+        ----------
+        data : WRITEME
+        """
+        self.cost_from_X_data_specs()[0].validate(data)
+        X, Y = data
+        Y_hat = self.fprop(X)
+        return self.cost(Y, Y_hat)
+
+    def cost_from_X_data_specs(self):
+        """
+        Returns the data specs needed by cost_from_X.
+
+        This is useful if cost_from_X is used in a MethodCost.
+        """
+        space = CompositeSpace((self.get_input_space(),
+                                self.get_output_space()))
+        source = (self.get_input_source(), self.get_target_source())
+        return (space, source)
 
 
 def max_pool(bc01, pool_shape, pool_stride, image_shape):
@@ -2962,38 +2931,18 @@ class LinearGaussian(Linear):
 
 def beta_from_design(design, min_var=1e-6, max_var=1e6):
     """
-    Parameters
-    ----------
-    design : ndarray
-        A numpy ndarray containing a design matrix
-    min_var : float
-    max_var : float
-        All variances are constrained to lie in the range [min_var, max_var]
-        to avoid numerical issues like infinite precision.
+    .. todo::
 
-    Returns
-    -------
-    beta : ndarray
-        A 1D vector containing the marginal precision of each variable in the
-        design matrix.
+        WRITEME
     """
     return 1. / np.clip(design.var(axis=0), min_var, max_var)
 
 
 def beta_from_targets(dataset, **kwargs):
     """
-    Parameters
-    ----------
-    dataset : DenseDesignMatrix
-        A DenseDesignMatrix with a targets field `y`
-    kwargs : dict
-        Extra arguments to `beta_from_design`
+    .. todo::
 
-    Returns
-    -------
-    beta : ndarray
-        A 1-D vector containing the marginal precision of the *targets* in
-        `dataset`.
+        WRITEME
     """
     return beta_from_design(dataset.y, **kwargs)
 
@@ -3058,11 +3007,6 @@ class PretrainedLayer(Layer):
     def get_output_space(self):
 
         return self.layer_content.get_output_space()
-
-    @wraps(Layer.get_monitoring_channels)
-    def get_monitoring_channels(self):
-
-        return OrderedDict([])
 
     @wraps(Layer.fprop)
     def fprop(self, state_below):
