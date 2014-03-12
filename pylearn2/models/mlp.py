@@ -2327,7 +2327,7 @@ class ConvRectifiedLinear(Layer):
 
         if not hasattr(self, 'tied_b'):
             self.tied_b = False
-        if tied_b:
+        if self.tied_b:
             self.b = sharedX(self.detector_space.num_channels + self.init_bias)
         else:
             self.b = sharedX(self.detector_space.get_origin() + self.init_bias)
