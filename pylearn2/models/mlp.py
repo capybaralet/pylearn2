@@ -2213,6 +2213,9 @@ class ConvRectifiedLinear(Layer):
                       be normalized as well
      kernel_stride: The stride of the convolution kernel. A two-tuple of
                     ints.
+     tied_b: bool, optional, defaults to False
+         If False, each channel uses a different bias at each location.
+         If True, each channel uses the same bias at each location.
     """
     def __init__(self,
                  output_channels,
@@ -2232,7 +2235,8 @@ class ConvRectifiedLinear(Layer):
                  pool_type='max',
                  detector_normalization=None,
                  output_normalization=None,
-                 kernel_stride=(1, 1)):
+                 kernel_stride=(1, 1),
+                 tied_b=False):
         super(ConvRectifiedLinear, self).__init__()
 
 
@@ -2320,7 +2324,12 @@ class ConvRectifiedLinear(Layer):
         W, = self.transformer.get_params()
         W.name = 'W'
 
-        self.b = sharedX(self.detector_space.get_origin() + self.init_bias)
+        if not hasattr(self, 'tied_b'):
+            self.tied_b = False
+        if tied_b:
+            self.b = sharedX(self.detector_space.num_channels + self.init_bias)
+        else:
+            self.b = sharedX(self.detector_space.get_origin() + self.init_bias)
         self.b.name = 'b'
 
         print 'Input shape: ', self.input_space.shape
