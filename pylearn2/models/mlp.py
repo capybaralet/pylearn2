@@ -2328,7 +2328,7 @@ class ConvRectifiedLinear(Layer):
         if not hasattr(self, 'tied_b'):
             self.tied_b = False
         if self.tied_b:
-            self.b = sharedX(self.detector_space.num_channels + self.init_bias)
+            self.b = sharedX(np.zeros((self.detector_space.num_channels)) + self.init_bias)
         else:
             self.b = sharedX(self.detector_space.get_origin() + self.init_bias)
         self.b.name = 'b'
@@ -2462,9 +2462,18 @@ class ConvRectifiedLinear(Layer):
 
         self.input_space.validate(state_below)
 
-        z = self.transformer.lmul(state_below) + self.b
+#        z = self.transformer.lmul(state_below) + self.b
+        z = self.transformer.lmul(state_below)
+        if not hasattr(self, 'tied_b'):
+            self.tied_b = False
+        if self.tied_b:
+            b = self.b.dimshuffle('x', 0, 'x', 'x')
+        else:
+            b = self.b.dimshuffle('x', 0, 1, 2)
+
         if self.layer_name is not None:
             z.name = self.layer_name + '_z'
+        z = z + b
 
         d = z * (z > 0.) + self.left_slope * z * (z < 0.)
 
