@@ -1595,6 +1595,7 @@ class Linear(Layer):
     def set_input_space(self, space):
 
         self.input_space = space
+        return
 
         if isinstance(space, VectorSpace):
             self.requires_reformat = False
