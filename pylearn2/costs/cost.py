@@ -451,7 +451,7 @@ you may as well just change the learning rate.""")
     return SumOfCosts([[scaling, cost]])
 
 
-class DavidKsMDNCost(Cost):
+class DavidKsMDNCost(Cost, DefaultDataSpecsMixin):
     """cost for Mixture Density Network (Mixture of spherical Gaussians)"""
 
     def __init__(self, component_structure = 'coeff_mean_std'):
