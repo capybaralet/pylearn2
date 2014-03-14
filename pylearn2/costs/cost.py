@@ -451,6 +451,30 @@ you may as well just change the learning rate.""")
     return SumOfCosts([[scaling, cost]])
 
 
+class DavidKsMDNCost(Cost):
+    """cost for Mixture Density Network (Mixture of spherical Gaussians)"""
+
+    def __init__(self, component_structure = 'coeff_mean_std'):
+        # NOT IMPLEMENTED.  The idea is to have a way of specifying the type of
+        # mixture, although really, it should just take a specification of the
+        # cost function as a function of the NN's outputs.
+        self.component_structure = component_structure
+
+    def expr(self, model, data, **kwargs):
+        self.get_data_specs(model)[0].validate(data)
+        # unpack data (Y = target, model(X) = output)
+        (X, Y) = data
+        # TODO generate prediction and compute cost
+        outputs = model(X)
+        mix_coefficients = T.nnet.softmax(outputs[::3])
+        means = outputs[1::3]
+        stds = outputs[2::3]
+        rval = 0
+        for c,m,s in zip(mix_coefficients,means,stds):
+            rval += c*T.raw_random.normal(avg=m,std=s,ndim=1)
+        return rval
+
+
 class LpPenalty(NullDataSpecsMixin, Cost):
     """
     L-p penalty of the tensor variables provided.
