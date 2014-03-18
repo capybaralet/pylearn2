@@ -2279,8 +2279,7 @@ class ConvRectifiedLinear(Layer):
                  tied_b=False,
                  detector_normalization=None,
                  output_normalization=None,
-                 kernel_stride=(1, 1),
-                 tied_b=False):
+                 kernel_stride=(1, 1)):
         super(ConvRectifiedLinear, self).__init__()
 
 
