@@ -16,6 +16,9 @@ class Default(DefaultDataSpecsMixin, Cost):
     It simply calls the MLP's cost_from_X method.
     """
 
+    def __init__(self, MDN=False):
+        self.MDN = MDN
+
     supervised = True
 
     def expr(self, model, data, **kwargs):
@@ -35,7 +38,7 @@ class Default(DefaultDataSpecsMixin, Cost):
         """
         space, sources = self.get_data_specs(model)
         space.validate(data)
-        return model.cost_from_X(data)
+        return model.cost_from_X(data,self.MDN)
 
 
 class WeightDecay(NullDataSpecsMixin, Cost):

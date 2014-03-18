@@ -451,28 +451,43 @@ you may as well just change the learning rate.""")
     return SumOfCosts([[scaling, cost]])
 
 
-class DavidKsMDNCost(Cost, DefaultDataSpecsMixin):
+class DavidKsMDNCost(DefaultDataSpecsMixin,Cost):
     """cost for Mixture Density Network (Mixture of spherical Gaussians)"""
 
-    def __init__(self, component_structure = 'coeff_mean_std'):
+    def __init__(self, num_components=1, component_structure = 'coeff_mean_std'):
         # NOT IMPLEMENTED.  The idea is to have a way of specifying the type of
         # mixture, although really, it should just take a specification of the
         # cost function as a function of the NN's outputs.
+        self.num_components = num_components
         self.component_structure = component_structure
 
     def expr(self, model, data, **kwargs):
         self.get_data_specs(model)[0].validate(data)
         # unpack data (Y = target, model(X) = output)
-        (X, Y) = data
+        #print data.shape.eval()
+        X, Y = data
         # TODO generate prediction and compute cost
         outputs = model(X)
+        print type(outputs)
         mix_coefficients = T.nnet.softmax(outputs[::3])
         means = outputs[1::3]
         stds = outputs[2::3]
-        rval = 0
-        for c,m,s in zip(mix_coefficients,means,stds):
-            rval += c*T.raw_random.normal(avg=m,std=s,ndim=1)
-        return rval
+        t = T.scalar("total")
+        from theano.tensor.shared_randomstreams import RandomStreams
+        from theano import function
+        srng = RandomStreams(seed=234)
+        def compute_mixture(t,c,m,s):
+            return t + c*srng.normal(avg=m,std=s,ndim=1)
+        results, updates = theano.map(fn=compute_mixture,
+                                      sequences=[c,m,s],
+                                      non_sequences=t)
+        output_fn = theano.function(inputs=[t,c,m,s], outputs=results)
+        import numpy
+        total = theano.shared(numpy.array(0,dtype='float32'))
+        return output_fn(total,mix_coefficients,means,stds)
+
+    def get_data_specs(self, model):
+        return (model.get_input_space(), model.get_input_source())
 
 
 class LpPenalty(NullDataSpecsMixin, Cost):

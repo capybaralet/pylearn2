@@ -752,21 +752,28 @@ class MLP(Layer):
             return T.switch(mask, state * scale, mask_value)
 
     @wraps(Layer.cost)
-    def cost(self, Y, Y_hat):
+    def cost(self, Y, Y_hat, MDN=False):
+        if MDN:
+            s = ' MDN'
+        else: 
+            s = ''
+        print 'using MLP new cost'+s
+        return self.cost_from_cost_matrix(self.cost_matrix(Y, Y_hat, MDN))
+
 
         return self.layers[-1].cost(Y, Y_hat)
 
     @wraps(Layer.cost_matrix)
-    def cost_matrix(self, Y, Y_hat):
+    def cost_matrix(self, Y, Y_hat, MDN=False):
 
-        return self.layers[-1].cost_matrix(Y, Y_hat)
+        return self.layers[-1].cost_matrix(Y, Y_hat, MDN)
 
     @wraps(Layer.cost_from_cost_matrix)
     def cost_from_cost_matrix(self, cost_matrix):
 
         return self.layers[-1].cost_from_cost_matrix(cost_matrix)
 
-    def cost_from_X(self, data):
+    def cost_from_X(self, data, MDN=False):
         """
         Computes self.cost, but takes data=(X, Y) rather than Y_hat as an
         argument.
@@ -778,10 +785,12 @@ class MLP(Layer):
         ----------
         data : WRITEME
         """
+        print 'using MLP cost_from_X'
         self.cost_from_X_data_specs()[0].validate(data)
         X, Y = data
         Y_hat = self.fprop(X)
-        return self.cost(Y, Y_hat)
+        return self.cost(Y, Y_hat, MDN)
+
 
     def cost_from_X_data_specs(self):
         """
@@ -1595,7 +1604,6 @@ class Linear(Layer):
     def set_input_space(self, space):
 
         self.input_space = space
-        return
 
         if isinstance(space, VectorSpace):
             self.requires_reformat = False
@@ -2512,34 +2520,81 @@ class ConvRectifiedLinear(Layer):
         return Default()
 
     @wraps(Layer.cost)
-    def cost(self, Y, Y_hat):
-        print 'using new cost'
-        return self.cost_from_cost_matrix(self.cost_matrix(Y, Y_hat))
+    def cost(self, Y, Y_hat, MDN=False):
+        if MDN:
+            s = ' MDN'
+        else:
+            s = ''
+        print 'using new cost'+s
+        return self.cost_from_cost_matrix(self.cost_matrix(Y, Y_hat, MDN))
 
     @wraps(Layer.cost_from_cost_matrix)
     def cost_from_cost_matrix(self, cost_matrix):
+        sh = None
+        try:
+            sh = cost_matrix.shape.eval()
+        except:
+            pass
+        print type(cost_matrix), sh, "cfcm" #cost_matrix.shape.eval(), "cfcm"
         return cost_matrix.sum(axis=1).mean()
 
+    # WIP copy 2
     @wraps(Layer.cost_matrix)
-    def cost_matrix(self, Y, Y_hat):
-        return T.sqr(Y - Y_hat)
+    def cost_matrix(self, Y, Y_hat, MDN=False):
+        print 'using CRELU cost_matrix'
+        if MDN:
+            print "MDN=True"
+            Y_hat = Y_hat.dimshuffle(1,2,0,3).flatten(2)
+            Y = Y.dimshuffle(1,2,0,3).flatten(2)
+            mix_coefficients = T.nnet.softmax(Y_hat[::3].T).T
+            means = Y_hat[1::3] - Y
+            stds = Y_hat[2::3]
+            return -T.log(mix_coefficients/(2*np.pi)**.5/stds*T.exp(-means**2/2/stds**2))
+        else:
+            return T.sqr(Y - Y_hat)
 
-    def cost_from_X(self, data):
-        """
-        Computes self.cost, but takes data=(X, Y) rather than Y_hat as an
-        argument.
+    @wraps(Layer.cost_matrix)
+    def cost_matrixX(self, Y, Y_hat, MDN=False):
+        print 'using CRELU cost_matrixXXXXXX'
+        if MDN:
+        #    print Y.shape.eval()
+        #    print Y_hat.shape.eval()
+        #    print Y_hat.dimshuffle(1,2,0,3).shape.eval()
+        #    print Y_hat.dimshuffle(1,2,0,3).flatten(2).shape.eval()
+            Y_hat = Y_hat.dimshuffle(1,2,0,3).flatten(2)
+            Y = Y.dimshuffle(1,2,0,3).flatten(2)
+            mix_coefficients = T.nnet.softmax(Y_hat[::3])
+            means = Y_hat[1::3]
+            stds = Y_hat[2::3]
+            from theano.tensor.shared_randomstreams import RandomStreams
+            from theano import function
+            import theano
+            srng = RandomStreams(seed=234)
+            num_components = self.detector_space.num_channels
+            c = T.arange(num_components)
+            m = T.arange(num_components)
+            s = T.arange(num_components)
+        #    t = T.scalar("t")
+            def compute_mixture(C,M,S):
+                return C*srng.normal(avg=M,std=S,ndim=1)
+            mixture_components, updates = theano.scan(fn=compute_mixture,
+                                                      outputs_info = None,
+                                                      sequences=[c,m,s])
+            output = mixture_components.sum()
+            output_fn = theano.function(inputs=[c,m,s],outputs=output)
+            # output_fn needs to take unmolested inputs, and do all the
+            # operations within itself (?)
+            return -T.log(output_fn(mix_coefficients,means,stds).dimshuffle('x',0,1,'x'))
+        else:
+            return T.sqr(Y - Y_hat)
 
-        This is just a wrapper around self.cost that computes Y_hat by
-        calling Y_hat = self.fprop(X)
-
-        Parameters
-        ----------
-        data : WRITEME
-        """
+    @wraps(MLP.cost_from_X)
+    def cost_from_X(self, data, MDN=False):
+        print 'using ConvRectifiedLinear cost_from_X'
         self.cost_from_X_data_specs()[0].validate(data)
         X, Y = data
         Y_hat = self.fprop(X)
-        return self.cost(Y, Y_hat)
+        return self.cost(Y, Y_hat, MDN)
 
     def cost_from_X_data_specs(self):
         """
