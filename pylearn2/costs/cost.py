@@ -606,15 +606,14 @@ class FixedVarDescr(object):
     line search, etc.
 
     Attributes
-    ----------
-    fixed_vars : dict
+
+    - fixed_vars : dict
         maps string names to shared variables or some sort of data
         structure surrounding shared variables.
         Any learning algorithm that does multiple updates on the same
         minibatch should pass fixed_vars to the cost's expr and
         get_gradient methods as keyword arguments.
-
-    on_load_batch : list
+    - on_load_batch : list
         A list of callable objects that the learning algorithm should
         call with input data.
         All of these callables must take an argument with the same
@@ -655,6 +654,7 @@ def merge(left, right):
     ----------
     left : FixedVarDescr
     right : FixedVarDescr
+
     Returns
     -------
     merged : FixedVarDescr

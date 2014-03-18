@@ -11,7 +11,7 @@ __email__ = "goodfeli@iro"
 import numpy as np
 import theano.tensor as T
 
-from pylearn2.base import Block
+from pylearn2.blocks import Block
 from pylearn2.utils import as_floatX, constantX
 
 
@@ -238,13 +238,12 @@ class Identity(Block):
     """
     A Block that computes the identity transformation. Mostly useful as a
     placeholder.
+
+    Parameters
+    ----------
+    input_space : WRITEME
     """
     def __init__(self, input_space=None):
-        """
-        .. todo::
-
-            WRITEME
-        """
         super(Identity, self).__init__()
         self.input_space = input_space
 
