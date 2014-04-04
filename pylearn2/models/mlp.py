@@ -2574,12 +2574,13 @@ class ConvRectifiedLinear(Layer):
         print 'using CRELU cost_matrix'
         if MDN:
             print "MDN=True"
-            Y_hat = Y_hat.dimshuffle(1,2,0,3).flatten(2)
-            Y = Y.dimshuffle(1,2,0,3).flatten(2)
-            mix_coefficients = T.nnet.softmax(Y_hat[::3].T).T
-            means = Y_hat[1::3] - Y
-            stds = Y_hat[2::3]
-            return -T.log(mix_coefficients/(2*np.pi)**.5/stds*T.exp(-means**2/2/stds**2))
+            Y_hat2 = Y_hat.dimshuffle(1,2,0,3).flatten(2)
+            Y2 = Y.dimshuffle(1,2,0,3).flatten(2)
+            mix_coefficients = T.nnet.softmax(Y_hat2[::3].T).T
+            means = Y_hat2[1::3] - Y2
+            stds = Y_hat2[2::3]
+            ret = -T.log(mix_coefficients/(2*np.pi)**.5/stds*T.exp(-means**2/2/stds**2))
+            return ret
         else:
             return T.sqr(Y - Y_hat)
 
