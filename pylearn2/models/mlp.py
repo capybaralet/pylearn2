@@ -111,6 +111,14 @@ class Layer(Model):
         """
         return OrderedDict()
 
+    def get_target_space(self):
+        """WRITEME"""
+        return self.get_output_space()
+
+    def get_output_space(self):
+        assert self.output_space is not None, 'Layer has no output space.'
+        return self.output_space
+
     def fprop(self, state_below):
         """
         Does the forward prop transformation for this layer.
@@ -248,6 +256,7 @@ class Layer(Model):
         raise NotImplementedError
 
 
+
 class MLP(Layer):
     """
     A multilayer perceptron.
@@ -327,7 +336,6 @@ class MLP(Layer):
 
         return Default()
 
-    @wraps(Layer.get_output_space)
     def get_output_space(self):
 
         return self.layers[-1].get_output_space()
@@ -413,9 +421,13 @@ class MLP(Layer):
         In this case, we want the inputs and targets.
         """
         space = CompositeSpace((self.get_input_space(),
-                                self.get_output_space()))
+                                self.get_target_space()))
         source = (self.get_input_source(), self.get_target_source())
         return (space, source)
+
+    @wraps(Layer.get_target_space)
+    def get_target_space(self):
+        return self.layers[-1].get_target_space()
 
     @wraps(Layer.get_params)
     def get_params(self):
@@ -2639,6 +2651,54 @@ class ConvRectifiedLinear(Layer):
         return (space, source)
 
 
+class MDN_ConvRectifiedLinear(ConvRectifiedLinear):
+    """
+    A subclass that uses specified targets data_specs instead of default
+    (outputs data_specs)
+    """
+
+    def __init__(self,
+                 output_channels,
+                 kernel_shape,
+                 pool_shape,
+                 pool_stride,
+                 layer_name,
+                 irange=None,
+                 border_mode='valid',
+                 sparse_init=None,
+                 include_prob=1.0,
+                 init_bias=0.,
+                 W_lr_scale=None,
+                 b_lr_scale=None,
+                 left_slope=0.0,
+                 max_kernel_norm=None,
+                 pool_type='max',
+                 tied_b=False,
+                 detector_normalization=None,
+                 output_normalization=None,
+                 kernel_stride=(1, 1)):
+        super(ConvRectifiedLinear, self).__init__()
+
+        if (irange is None) and (sparse_init is None):
+            raise AssertionError("You should specify either irange or "
+                                 "sparse_init when calling the constructor of "
+                                 "ConvRectifiedLinear.")
+        elif (irange is not None) and (sparse_init is not None):
+            raise AssertionError("You should specify either irange or "
+                                 "sparse_init when calling the constructor of "
+                                 "ConvRectifiedLinear and not both.")
+
+        self.__dict__.update(locals())
+        del self.self
+
+
+    def get_target_space(self):
+        """
+        WRITEME
+        """
+        return VectorSpace(dim=self.get_output_space().shape[0])
+
+
 def max_pool(bc01, pool_shape, pool_stride, image_shape):
     """
     .. todo::
@@ -3108,7 +3168,6 @@ class PretrainedLayer(Layer):
 
         return self.layer_content.get_input_space()
 
-    @wraps(Layer.get_output_space)
     def get_output_space(self):
 
         return self.layer_content.get_output_space()

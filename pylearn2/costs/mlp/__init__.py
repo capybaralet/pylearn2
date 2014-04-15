@@ -8,6 +8,9 @@ from theano import tensor as T
 
 from pylearn2.costs.cost import Cost, DefaultDataSpecsMixin, NullDataSpecsMixin
 from pylearn2.utils import safe_izip
+from pylearn2.space import VectorSpace, CompositeSpace
+
+import numpy as np
 
 
 class Default(DefaultDataSpecsMixin, Cost):
@@ -166,3 +169,45 @@ class L1WeightDecay(NullDataSpecsMixin, Cost):
         total_cost.name = 'l1_penalty'
 
         return total_cost
+
+
+class MDNCost(Cost):
+    """Mixture Density Network Cost"""
+
+    supervised = True
+
+    def __init__(self, NADE_trick = False):
+        """
+        http://papers.nips.cc/paper/
+        5060-rnade-the-real-valued-neural-autoregressive-density-estimator.pdf
+        bottom pg 3
+        """
+        self.__dict__.update(locals())
+        del self.self
+
+    def expr(self, model, data, **kwargs):
+        """
+        Parameters
+        ----------
+        """
+        #space, sources = self.get_data_specs(model)
+        #space.validate(data)
+
+        #self.cost_from_X_data_specs()[0].validate(data) # DEAL WITH THIS!
+
+        X, Y = data
+        Y_hat = model.fprop(X)
+        Y_hat2 = Y_hat.dimshuffle(1,2,0,3).flatten(2)
+        Y2 = Y#.dimshuffle(1,2,0,3).flatten(2)
+        mix_coefficients = T.nnet.softmax(Y_hat2[::3].T).T
+        means = Y_hat2[1::3] - Y2
+        stds = T.nnet.softmax(Y_hat2[2::3].T).T
+        ret = -T.log(mix_coefficients/(2*np.pi)**.5/stds*T.exp(-means**2/2/stds**2))
+        return ret.sum(axis=1).mean()
+
+
+    def get_data_specs(self, model):
+        space = CompositeSpace([model.get_input_space(),
+                                VectorSpace(dim=model.get_output_space().shape[0])])
+        sources = ('features', 'targets')
+        return (space, sources)
