@@ -228,6 +228,7 @@ class Monitor(object):
                 a(*X)
 
             else:
+                print 'self._flat_data_specs', self._flat_data_specs
                 actual_ne = 0
                 for X in myiterator:
                     # X is a flat (not nested) tuple
@@ -487,6 +488,7 @@ class Monitor(object):
         final_names = dir(self)
         self.register_names_to_del([name for name in final_names
                                     if name not in init_names])
+
 
     def register_names_to_del(self, names):
         """

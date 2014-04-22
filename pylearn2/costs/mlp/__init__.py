@@ -5,6 +5,7 @@ __authors__ = 'Vincent Archambault-Bouffard, Ian Goodfellow'
 __copyright__ = "Copyright 2013, Universite de Montreal"
 
 from theano import tensor as T
+from theano import function as F
 
 from pylearn2.costs.cost import Cost, DefaultDataSpecsMixin, NullDataSpecsMixin
 from pylearn2.utils import safe_izip
@@ -186,28 +187,35 @@ class MDNCost(Cost):
         del self.self
 
     def expr(self, model, data, **kwargs):
-        """
-        Parameters
-        ----------
-        """
         #space, sources = self.get_data_specs(model)
         #space.validate(data)
-
-        #self.cost_from_X_data_specs()[0].validate(data) # DEAL WITH THIS!
-
+        #batch_size = model.batch_size
+        #if batch_size is None:
+        #    import warnings
+        #    warnings.warn("model.batch_size is None, defaulting to batch_size = 1")
+        #    batch_size = 1
+        print 'expr type(data)', type(data)
+        #import ipdb; ipdb.set_trace()
         X, Y = data
+        print 'Y.ndim', Y.ndim
+        Y = Y.flatten(1)
         Y_hat = model.fprop(X)
-        Y_hat2 = Y_hat.dimshuffle(1,2,0,3).flatten(2)
-        Y2 = Y#.dimshuffle(1,2,0,3).flatten(2)
-        mix_coefficients = T.nnet.softmax(Y_hat2[::3].T).T
-        means = Y_hat2[1::3] - Y2
-        stds = T.nnet.softmax(Y_hat2[2::3].T).T
-        ret = -T.log(mix_coefficients/(2*np.pi)**.5/stds*T.exp(-means**2/2/stds**2))
-        return ret.sum(axis=1).mean()
+        #######
+        Y_hat = Y_hat.dimshuffle(1,2,0,3).flatten(2) # dimensions?
+        mix_coefficients = T.nnet.softmax(Y_hat[::3])
+        #import ipdb; ipdb.set_trace()
+        means = Y_hat[1::3] - Y.dimshuffle('x',0)
+        stds = T.nnet.softplus(Y_hat[2::3])
+        ret0 = mix_coefficients/(2*np.pi)**.5/stds*T.exp(-means**2/2/stds**2)
+        ret = -T.log(T.sum(ret0, axis=(0,1)))
+        return ret
+        #fn = F([Y,Y_hat], ret)
+        #return fn(y,y_hat)
 
 
     def get_data_specs(self, model):
-        space = CompositeSpace([model.get_input_space(),
-                                VectorSpace(dim=model.get_output_space().shape[0])])
+        space = CompositeSpace([model.get_input_space(), model.get_target_space()])
+        #print 'MDN get_data_specs', space
+#                                VectorSpace(dim=model.get_output_space().shape[0])])
         sources = ('features', 'targets')
         return (space, sources)

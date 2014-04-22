@@ -2585,7 +2585,7 @@ class ConvRectifiedLinear(Layer):
     def cost_matrix(self, Y, Y_hat, MDN=False):
         print 'using CRELU cost_matrix'
         if MDN:
-            print "MDN=True"
+            #print "MDN=True"
             Y_hat2 = Y_hat.dimshuffle(1,2,0,3).flatten(2)
             Y2 = Y.dimshuffle(1,2,0,3).flatten(2)
             mix_coefficients = T.nnet.softmax(Y_hat2[::3].T).T
