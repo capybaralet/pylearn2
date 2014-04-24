@@ -506,6 +506,7 @@ class FiniteDatasetIterator(object):
                 if fn is None:
                     fn = (lambda batch, dspace=dspace, sp=sp:
                           dspace.np_format_as(batch, sp))
+                # This seems broken... init_fn is None => fn is None
                 else:
                     fn = (lambda batch, dspace=dspace, sp=sp, fn_=fn:
                           dspace.np_format_as(fn_(batch), sp))
