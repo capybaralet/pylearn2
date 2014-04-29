@@ -3,6 +3,7 @@
 """
 
 import inspect
+from nose.plugins.skip import SkipTest
 import re
 import sys
 import types
@@ -85,7 +86,9 @@ class Reader(object):
             yield line
 
 class NumpyDocString(object):
-    def __init__(self, docstring):
+    def __init__(self, docstring, name=None):
+        if name:
+            self.name = name
         docstring = docstring.split('\n')
 
         # De-indent paragraph
@@ -259,11 +262,14 @@ class NumpyDocString(object):
     def _parse_summary(self):
         """Grab signature (if given) and summary"""
         summary = self._doc.read_to_next_empty_line()
-        summary_str = " ".join([s.strip() for s in summary])
+        summary_str = "\n".join([s.strip() for s in summary])
         if re.compile('^([\w. ]+=)?[\w\.]+\(.*\)$').match(summary_str):
             self['Signature'] = summary_str
             if not self._is_at_section():
                 self['Summary'] = self._doc.read_to_next_empty_line()
+        elif re.compile('^[\w]+\n[-]+').match(summary_str):
+            self['Summary'] = ''
+            self._doc.reset()
         else:
             self['Summary'] = summary
 
@@ -381,8 +387,12 @@ class NumpyDocString(object):
         self._doc.reset()
         for j, line in enumerate(self._doc):
             if len(line) > 75:
-                errors.append("Line %d exceeds 75 chars"
-                        ": \"%s\"..." % (j+1, line[:30]))
+                if hasattr(self, 'name'):
+                    errors.append("%s: Line %d exceeds 75 chars"
+                            ": \"%s\"..." % (self.name, j+1, line[:30]))
+                else:
+                    errors.append("Line %d exceeds 75 chars"
+                                  ": \"%s\"..." % (j+1, line[:30]))
 
         if check_order:
             canonical_order = ['Signature', 'Summary', 'Extended Summary',
@@ -692,11 +702,11 @@ def handle_class(val, class_name):
     else:
         cls_errors = [
             (e,) for e in
-            NumpyClassDocString(docstring).get_errors()
+            NumpyClassDocString(docstring, class_name).get_errors()
         ]
         # Get public methods and parse their docstrings
         methods = dict(((name, func) for name, func in inspect.getmembers(val)
-                        if not name.startswith('_') and callable(func)))
+                        if not name.startswith('_') and callable(func) and type(func) is not type))
         for m_name, method in methods.iteritems():
             cls_errors.extend(handle_method(method, m_name, class_name))
     return cls_errors
@@ -735,6 +745,9 @@ def docstring_errors(filename, global_dict=None):
         execfile(filename, global_dict)
     except SystemExit:
         pass
+    except SkipTest:
+        raise AssertionError("Couldn't verify format of " + filename +
+                "due to SkipTest")
     all_errors = []
     for key, val in global_dict.iteritems():
         if not key.startswith('_'):

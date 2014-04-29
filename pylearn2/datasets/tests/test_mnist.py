@@ -1,4 +1,5 @@
 from pylearn2.datasets.mnist import MNIST, MNIST_rotated_background
+from pylearn2.space import IndexSpace, VectorSpace
 import unittest
 from pylearn2.testing.skip import skip_if_no_data
 import numpy as np
@@ -43,3 +44,27 @@ class TestMNIST(unittest.TestCase):
         b01c_direct = self.test.get_topological_view(b01c_X)
         assert b01c_direct.shape == b01c.shape
         assert np.all(b01c_direct == b01c)
+
+    def test_y_index_space(self):
+        """
+        Tests that requesting the targets to be in IndexSpace and iterating
+        over them works
+        """
+        data_specs = (IndexSpace(max_labels=10, dim=1), 'targets')
+        it = self.test.iterator(mode='sequential',
+                                data_specs=data_specs,
+                                batch_size=100)
+        for y in it:
+            pass
+
+    def test_y_vector_space(self):
+        """
+        Tests that requesting the targets to be in VectorSpace and iterating
+        over them works
+        """
+        data_specs = (VectorSpace(dim=10), 'targets')
+        it = self.test.iterator(mode='sequential',
+                                data_specs=data_specs,
+                                batch_size=100)
+        for y in it:
+            pass
