@@ -3,8 +3,8 @@ __authors__ = "Ian Goodfellow"
 __copyright__ = "Copyright 2010-2012, Universite de Montreal"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
-__maintainer__ = "Ian Goodfellow"
-__email__ = "goodfeli@iro"
+__maintainer__ = "LISA Lab"
+__email__ = "pylearn-dev@googlegroups"
 import warnings
 try:
     from scipy.linalg import cholesky, det, solve
@@ -115,6 +115,7 @@ class AdditiveDiagonalMND:
     init_beta : WRITEME
     nvis : WRITEME
     """
+
     def __init__(self, init_beta, nvis):
         self.__dict__.update(locals())
         del self.self
@@ -130,8 +131,12 @@ class AdditiveDiagonalMND:
 
             WRITEME properly
 
-        X: a theano variable containing a design matrix
-        of observations of the random vector to condition on."""
+        Parameters
+        ----------
+        X : WRITEME
+            A theano variable containing a design matrix of 
+            observations of the random vector to condition on.
+        """
         Z = self.s_rng.normal(size=X.shape,
                               avg=X, std=1./T.sqrt(self.beta), dtype=config.floatX)
         return Z

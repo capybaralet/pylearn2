@@ -6,15 +6,14 @@ Presets:
 
 - sequential: iterates through fixed slices of the dataset in sequence
 - shuffled_sequential: iterates through a shuffled version of the dataset
-    in sequence
+  in sequence
 - random_slice: on each call to next, returns a slice of the dataset,
-    chosen uniformly at random over contiguous slices
-    samples with replacement, but still reports that
-    container is empty after num_examples / batch_size calls
+  chosen uniformly at random over contiguous slices.
+  Samples with replacement, but still reports that
+  container is empty after num_examples / batch_size calls
 - random_uniform: on each call to next, returns a random subset of the
-    dataset.
-    samples with replacement, but still reports that
-    container is empty after num_examples / batch_size calls
+  dataset. Samples with replacement, but still reports that
+  container is empty after num_examples / batch_size calls
 """
 from __future__ import division
 import functools
@@ -203,9 +202,9 @@ class ForcedEvenIterator(SubsetIterator):
     Examples
     --------
     >>> dct = ForcedEvenIterator.__dict__.copy()
-    >>> dct["_base_iterator_cls"] = DummyIterator
-    >>> dct["fancy"] = DummyIterator.fancy
-    >>> dct["stochastic"] = DummyIterator.stochastic
+    >>> dct["_base_iterator_cls"] = SequentialSubsetIterator
+    >>> dct["fancy"] = SequentialSubsetIterator.fancy
+    >>> dct["stochastic"] = SequentialSubsetIterator.stochastic
     >>>
     >>> NewForcedEvenClass = type("ForcedEvenDummyIterator",
     ...     ForcedEvenIterator.__bases__, dct)
@@ -215,7 +214,7 @@ class ForcedEvenIterator(SubsetIterator):
 
     For a shortcut use function as_even()
 
-    >>> NewForcedEvenClass = as_even(DummyIterator)
+    >>> NewForcedEvenClass = as_even(SequentialSubsetIterator)
     >>> even_iterator = NewForcedEvenClass(dataset_size=100,
     ...     batch_size=30, num_batches=None)
     """
@@ -363,6 +362,7 @@ class SequentialSubsetIterator(SubsetIterator):
     See :py:class:`SubsetIterator` for detailed constructor parameter
     and attribute documentation.
     """
+
     def __init__(self, dataset_size, batch_size, num_batches, rng=None):
         if rng is not None:
             raise ValueError("non-None rng argument not supported for "
@@ -482,6 +482,7 @@ class RandomUniformSubsetIterator(SubsetIterator):
     See :py:class:`SubsetIterator` for detailed constructor parameter
     and attribute documentation.
     """
+
     def __init__(self, dataset_size, batch_size, num_batches, rng=None):
         self._rng = make_np_rng(rng, which_method=["random_integers",
                                                    "shuffle"])
@@ -524,6 +525,7 @@ class RandomSliceSubsetIterator(RandomUniformSubsetIterator):
     See :py:class:`SubsetIterator` for detailed constructor parameter
     and attribute documentation.
     """
+
     def __init__(self, dataset_size, batch_size, num_batches, rng=None):
         if batch_size is None:
             raise ValueError("batch_size cannot be None for random slice "
@@ -565,6 +567,7 @@ class BatchwiseShuffledSequentialIterator(SequentialSubsetIterator):
     See :py:class:`SubsetIterator` for detailed constructor parameter
     and attribute documentation.
     """
+
     def __init__(self, dataset_size, batch_size, num_batches=None, rng=None):
         self._rng = make_np_rng(rng, which_method=["random_integers",
                                                    "shuffle"])
@@ -709,6 +712,7 @@ class FiniteDatasetIterator(object):
     See the documentation for :py:class:`SubsetIterator` for
     attribute documentation.
     """
+
     def __init__(self, dataset, subset_iterator, data_specs=None,
                  return_tuple=False, convert=None):
         self._data_specs = data_specs
@@ -779,9 +783,15 @@ class FiniteDatasetIterator(object):
                 # otherwise they would change in the next iteration
                 # of the loop.
                 if fn is None:
-                    fn = (lambda batch, dspace=dspace, sp=sp:
-                          dspace.np_format_as(batch, sp))
-                # This seems broken... init_fn is None => fn is None
+                
+                    def fn(batch, dspace=dspace, sp=sp):
+                        try:
+                              return dspace.np_format_as(batch, sp)
+                        except ValueError as e:
+                            msg = str(e) + '\nMake sure that the model and '\
+                                           'dataset have been initialized with '\
+                                           'correct values.'
+                            raise ValueError(msg)
                 else:
                     fn = (lambda batch, dspace=dspace, sp=sp, fn_=fn:
                           dspace.np_format_as(fn_(batch), sp))

@@ -7,7 +7,7 @@ __authors__ = ["Ian Goodfellow", "Vincent Dumoulin"]
 __copyright__ = "Copyright 2012, Universite de Montreal"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
-__maintainer__ = "Ian Goodfellow"
+__maintainer__ = "LISA Lab"
 
 import numpy as np
 import logging
@@ -62,6 +62,7 @@ class BaseCD(Cost):
         If specified, uses this object to generate all random numbers.
         Otherwise, makes its own random number generator.
     """
+
     def __init__(self, num_chains, num_gibbs_steps, supervised=False,
                  toronto_neg=False, theano_rng=None):
         self.__dict__.update(locals())
@@ -349,6 +350,7 @@ class PCD(DefaultDataSpecsMixin, BaseCD):
     BaseCD : The base class of this class (where the constructor
         parameters are documented)
     """
+
     def _get_positive_phase(self, model, X, Y=None):
         """
         .. todo::
@@ -987,7 +989,8 @@ class WeightDecay(NullDataSpecsMixin, Cost):
 
     Parameters
     ----------
-    coeffs: a list, one element per layer, specifying the coefficient
+    coeffs : list
+        One element per layer, specifying the coefficient
         to put on the L1 activation cost for each layer.
         Each element may in turn be a list, ie, for CompositeLayers.
     """
@@ -1203,7 +1206,6 @@ class MultiPrediction(DefaultDataSpecsMixin, Cost):
 
             WRITEME
         """
-
         if self.supervised:
             X, Y = data
         else:
@@ -1321,7 +1323,6 @@ class MultiPrediction(DefaultDataSpecsMixin, Cost):
 
             WRITEME
         """
-
         X, Y = data
 
         assert Y is not None

@@ -19,8 +19,8 @@ __authors__ = "Ian Goodfellow"
 __copyright__ = "Copyright 2010-2012, Universite de Montreal"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
-__maintainer__ = "Ian Goodfellow"
-__email__ = "goodfeli@iro"
+__maintainer__ = "LISA Lab"
+__email__ = "pylearn-dev@googlegroups"
 
 import logging
 import theano.tensor as T
@@ -37,6 +37,8 @@ logger = logging.getLogger(__name__)
 
 def max_pool(z, pool_shape, top_down=None, theano_rng=None):
     """
+    Probabilistic max-pooling
+
     Parameters
     ----------
     z : theano 4-tensor
@@ -51,14 +53,14 @@ def max_pool(z, pool_shape, top_down=None, theano_rng=None):
 
     Returns
     -------
-    h : theano 4-tensor
-        the expected value of the detector layer h
     p : theano 4-tensor
         the expected value of the pooling layer p
-    h_samples : theano 4-tensor, only returned if theano_rng is not None
-        samples of the detector layer
+    h : theano 4-tensor
+        the expected value of the detector layer h
     p_samples : theano 4-tensor, only returned if theano_rng is not None
         samples of the pooling layer
+    h_samples : theano 4-tensor, only returned if theano_rng is not None
+        samples of the detector layer
 
     Notes
     ------
@@ -266,8 +268,10 @@ def max_pool_c01b(z, pool_shape, top_down=None, theano_rng=None):
     Like max_pool but with all 4-tensors formatted with axes ('c', 0, 1, 'b').
     This is for maximum speed when using-cuda convnet.
 
+    Notes
+    -----
     Performance notes:
-    Stabilizing the softmax is one source slowness. Here it is stabilized
+    Stabilizing the softmax is one source of slowness. Here it is stabilized
     with several calls to maximum and sub. It might also be possible to
     stabilize it with T.maximum(-top_down,<cuda convnet max pooling>).
     Don't know if that would be faster or slower.
@@ -428,7 +432,7 @@ def max_pool_channels(z, pool_size, top_down=None, theano_rng=None):
 
     Notes
     -----
-    all matrices are formatted as (num_example, num_features)
+    All matrices are formatted as (num_example, num_features)
     """
 
     z_name = z.name
@@ -445,14 +449,8 @@ def max_pool_channels(z, pool_size, top_down=None, theano_rng=None):
         if theano_rng is None:
             return p, h
         else:
-            t1 = time.time()
             p_samples = theano_rng.binomial(p=p, size=p.shape,
                                             dtype=p.dtype, n=1)
-            t2 = time.time()
-            if t2 - t1 > 0.5:
-                # TODO: speed up theano's random number seeding.
-                logger.warning("max pooling spent {0} in a call to "
-                               "theano_rng.binomial.".format(t2 - t1))
             h_samples = p_samples
             return p_samples, h_samples, p_samples, h_samples
     else:
@@ -546,14 +544,8 @@ def max_pool_channels(z, pool_size, top_down=None, theano_rng=None):
         reshaped_events = stacked_events.reshape((batch_size * n // pool_size,
                                                   outcomes))
 
-        t1 = time.time()
         multinomial = theano_rng.multinomial(pvals=reshaped_events,
                                              dtype=p.dtype)
-        t2 = time.time()
-        if t2 - t1 > 0.5:
-            # TODO: speed up theano's random number seeding.
-            logger.warning("max pooling spent {0} in a call to "
-                           "theano_rng.multinomial.".format(t2 - t1))
 
         reshaped_multinomial = multinomial.reshape((batch_size,
                                                     n // pool_size,
@@ -653,8 +645,8 @@ def max_pool_unstable(z, pool_shape):
     A version of max_pool that does not numerically stabilize the softmax.
     This is faster, but prone to both overflow and underflow in the
     intermediate computations.
-    Mostly useful for benchmarking, to determine how much speedup we could
-    hope to get by using a better stabilization method.
+    Mostly useful for benchmarking, to determine how much speedup we
+    could hope to get by using a better stabilization method.
     Also, this uses the ('b', 0, 1, 'c') format.
     """
 

@@ -15,6 +15,8 @@ This means you can write Pylearn2 plugins (new models, algorithms, etc) using
 mathematical expressions, and theano will optimize and stabilize those expressions for
 you, and compile them to a backend of your choice (CPU or GPU).
 
+.. _welcome_vision:
+
 Pylearn2 Vision
 ===============
 
@@ -35,6 +37,8 @@ Pylearn2 Vision
   the other sub-components if you choose not to.
 * Support cross-platform serialization of learned models.
 * Remain approachable enough to be used in the classroom (IFT6266 at the University of Montreal).
+
+.. _install:
 
 Download and installation
 =========================
@@ -72,6 +76,8 @@ Alternatively, you can make Pylearn2 available by adding the installation direct
 alone won't compile the Cython extensions (you will need to make sure the extension ``.so``
 files are built and accessible within the source tree, e.g. with
 ``python setup.py build_ext --inplace``).
+
+.. _data_path:
 
 Data path
 ---------
@@ -150,7 +156,9 @@ Roughly in order of what you'll want to check out:
   place to start if you want to really learn the library.
 * :ref:`libdoc` -- Documentation of the library modules.
 * :ref:`cluster` -- The tools we use at LISA for running Pylearn2 jobs on HPC clusters.
+* :ref:`large_data` -- A guide on how to deal with large datasets.
 * :ref:`vision` -- Some more detailed elaboration of some points of the Pylearn2 vision.
+* :ref:`faq` -- Please read the FAQ section before posting to mailing-lists.
 
 
 Community
@@ -183,6 +191,7 @@ Developer
 
 * :ref:`api_change` -- the best practices guide you should follow when changing any API in the library
 * :ref:`dev_start_guide` -- how to contribute code to Pylearn2
+* :ref:`pull_request_checklist` -- Things you should check your pull request for before review.
 * :ref:`data_specs` -- the interface different elements use to request and provide data
 
 
@@ -208,10 +217,13 @@ Developer
    internal/index
    internal/metadocumentation
    internal/data_specs
+   internal/pull_request_checklist
    overview
+   large_data
    tutorial/index
    tutorial/with_jobman
    vision
+   faq
    yaml_tutorial/index
    tutorial/notebook_tutorials
    LICENSE

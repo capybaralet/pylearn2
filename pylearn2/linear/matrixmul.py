@@ -7,8 +7,8 @@ __authors__ = "Ian Goodfellow"
 __copyright__ = "Copyright 2010-2012, Universite de Montreal"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
-__maintainer__ = "Ian Goodfellow"
-__email__ = "goodfeli@iro"
+__maintainer__ = "LISA Lab"
+__email__ = "pylearn-dev@googlegroups"
 
 from theano import tensor as T
 
@@ -40,6 +40,9 @@ class MatrixMul(LinearTransform):
     """
 
     def __init__(self, W):
+        """
+        Sets the initial values of the matrix
+        """
         self._W = W
 
     @functools.wraps(LinearTransform.get_params)
@@ -56,6 +59,11 @@ class MatrixMul(LinearTransform):
         .. todo::
 
             WRITEME
+
+        Parameters
+        ----------
+        x : ndarray, 1d or 2d
+            The input data
         """
 
         return T.dot(x, self._W)
@@ -65,6 +73,11 @@ class MatrixMul(LinearTransform):
         .. todo::
 
             WRITEME
+
+        Parameters
+        ----------
+        x : ndarray, 1d or 2d
+            The input data
         """
         return T.dot(x, self._W.T)
 

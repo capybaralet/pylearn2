@@ -7,8 +7,8 @@ __authors__ = "Ian Goodfellow"
 __copyright__ = "Copyright 2010-2012, Universite de Montreal"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
-__maintainer__ = "Ian Goodfellow"
-__email__ = "goodfeli@iro"
+__maintainer__ = "LISA Lab"
+__email__ = "pylearn-dev@googlegroups"
 
 import logging
 import time
@@ -29,25 +29,7 @@ from pylearn2.utils import sharedX
 logger = logging.getLogger(__name__)
 
 
-def norm_sq(s):
-    """
-    .. todo::
-
-        WRITEME
-    """
-    return np.square(s.get_value()).sum()
-
-
-def scale(s, a):
-    """
-    .. todo::
-
-        WRITEME
-    """
-    s.set_value(s.get_value() * np.cast[config.floatX](a))
-
-
-class BatchGradientDescent:
+class BatchGradientDescent(object):
     """
     A class for minimizing a function via the method of steepest descent.
 
@@ -630,3 +612,21 @@ class Accumulator(object):
         if len(rval) == 1:
             return rval[0]
         return rval
+
+
+def norm_sq(s):
+    """
+    .. todo::
+
+        WRITEME
+    """
+    return np.square(s.get_value()).sum()
+
+
+def scale(s, a):
+    """
+    .. todo::
+
+        WRITEME
+    """
+    s.set_value(s.get_value() * np.cast[config.floatX](a))

@@ -27,7 +27,7 @@ __authors__ = ["Ian Goodfellow", "Vincent Dumoulin"]
 __copyright__ = "Copyright 2012, Universite de Montreal"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
-__maintainer__ = "Ian Goodfellow"
+__maintainer__ = "LISA Lab"
 
 import numpy as np
 
@@ -362,7 +362,7 @@ class IsingHidden(HiddenLayer):
         W, = self.transformer.get_params()
         assert W.name is not None
 
-    def censor_updates(self, updates):
+    def _modify_updates(self, updates):
         """
         .. todo::
 
@@ -851,11 +851,9 @@ class BoltzmannIsingVisible(VisibleLayer):
         updates = OrderedDict()
         updates[self.boltzmann_bias] = self.boltzmann_bias
         updates[self.layer_above.W] = self.layer_above.W
-        self.censor_updates(updates)
-        f = function([], updates=updates)
-        f()
+        self.enforce_constraints()
 
-    def censor_updates(self, updates):
+    def _modify_updates(self, updates):
         """
         .. todo::
 
@@ -1260,11 +1258,9 @@ class BoltzmannIsingHidden(HiddenLayer):
         updates[self.W] = self.W
         if self.layer_above is not None:
             updates[self.layer_above.W] = self.layer_above.W
-        self.censor_updates(updates)
-        f = function([], updates=updates)
-        f()
+        self.enforce_constraints()
 
-    def censor_updates(self, updates):
+    def _modify_updates(self, updates):
         """
         .. todo::
 

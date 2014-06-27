@@ -1,12 +1,12 @@
-#The dataset for the NIPS 2011 Transfer Learning Challenge
+"""The dataset for the NIPS 2011 Transfer Learning Challenge"""
 __authors__ = "Ian Goodfellow"
 __copyright__ = "Copyright 2010-2012, Universite de Montreal"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
-__maintainer__ = "Ian Goodfellow"
-__email__ = "goodfeli@iro"
+__maintainer__ = "LISA Lab"
+__email__ = "pylearn-dev@googlegroups"
 import numpy as N
-from pylearn2.datasets import dense_design_matrix
+from pylearn2.datasets import cache, dense_design_matrix
 from pylearn2.utils.string_utils import preprocess
 
 
@@ -16,15 +16,14 @@ class TL_Challenge(dense_design_matrix.DenseDesignMatrix):
 
        WRITEME
 
-
     Parameters
     ----------
     which_set : WRITEME
     center : WRITEME
     custom_path : WRITEME
     """
-    def __init__(self, which_set, center=False, custom_path=None):
 
+    def __init__(self, which_set, center=False, custom_path=None):
         assert which_set in ['train', 'test', 'unlabeled', 'custom']
 
         path = "${PYLEARN2_DATA_PATH}/TLChallenge"
@@ -38,8 +37,9 @@ class TL_Challenge(dense_design_matrix.DenseDesignMatrix):
         elif which_set == 'custom':
             path = custom_path
 
-        path = preprocess(path)
+        remote_path = preprocess(path)
 
+        path = cache.datasetCache.cache_file(remote_path)
         X = N.fromfile(path, dtype=N.uint8, sep=' ')
 
         X = X.reshape(X.shape[0]/(32*32*3), 32*32*3, order='F')
@@ -68,7 +68,8 @@ class TL_Challenge(dense_design_matrix.DenseDesignMatrix):
         assert not N.any(N.isnan(self.X))
 
         if which_set == 'train' or which_set == 'test':
-            labels_path = path[:-8] + 'labels.dat'
+            labels_path = remote_path[:-8] + 'labels.dat'
+            labels_path = cache.datasetCache.cache_file(labels_path)
             self.y_fine = N.fromfile(labels_path, dtype=N.uint8, sep=' ')
             assert len(self.y_fine.shape) == 1
             assert self.y_fine.shape[0] == X.shape[0]

@@ -17,12 +17,15 @@ gauranteed by default copy.
 
 """
 
-import os
-import time
 import atexit
 import logging
-from pylearn2.utils import string_utils
+import os
+import stat
+import time
+
 import theano.gof.compilelock as compilelock
+
+from pylearn2.utils import string_utils
 
 
 log = logging.getLogger(__name__)
@@ -48,6 +51,9 @@ class LocalDatasetCache:
             self.dataset_remote_dir = ""
             self.dataset_local_dir = ""
 
+        if self.dataset_remote_dir == "" or self.dataset_local_dir == "":
+            log.debug("Local dataset cache is deactivated")
+
     def cache_file(self, filename):
         """
         Caches a file locally if possible. If caching was succesfull, or if
@@ -72,10 +78,11 @@ class LocalDatasetCache:
         # Check if a local directory for data has been defined. Otherwise,
         # do not locally copy the data
         if self.dataset_local_dir == "":
-            log.warning("Local cache deactivated : file %s not cached" %
-                        remote_name)
             return filename
 
+        common_msg = ("Message from Pylearn2 local cache of dataset"
+                      "(specified by the environment variable "
+                      "PYLEARN2_LOCAL_DATA_PATH): ")
         # Make sure the file to cache exists and really is a file
         if not os.path.exists(remote_name):
             log.error("Error : Specified file %s does not exist" %
@@ -87,8 +94,19 @@ class LocalDatasetCache:
                       remote_name)
             return filename
 
+        if not remote_name.startswith(self.dataset_remote_dir):
+            log.warning(
+                common_msg +
+                "We cache in the local directory only what is"
+                " under $PYLEARN2_DATA_PATH: %s" %
+                remote_name)
+            return filename
+
         # Create the $PYLEARN2_LOCAL_DATA_PATH folder if needed
-        self.safe_mkdir(self.dataset_local_dir)
+        self.safe_mkdir(self.dataset_local_dir,
+                        (stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR |
+                         stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP |
+                         stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH))
 
         # Determine local path to which the file is to be cached
         local_name = os.path.join(self.dataset_local_dir,
@@ -104,6 +122,14 @@ class LocalDatasetCache:
         # Also, if another process is currently caching the same file,
         # it forces the current process to wait for it to be done before
         # using the file.
+        if not os.access(local_folder, os.W_OK):
+            log.warning(common_msg +
+                        "Local folder %s isn't writable."
+                        " This is needed for synchronization."
+                        " We will use the remote version."
+                        " Manually fix the permission."
+                        % local_folder)
+            return filename
         self.get_writelock(local_name)
 
         # If the file does not exist locally, consider creating it
@@ -111,19 +137,52 @@ class LocalDatasetCache:
 
             # Check that there is enough space to cache the file
             if not self.check_enough_space(remote_name, local_name):
-                log.warning("Not enough free space : file %s not cached" %
+                log.warning(common_msg +
+                            "File %s not cached: Not enough free space" %
                             remote_name)
                 self.release_writelock()
                 return filename
 
             # There is enough space; make a local copy of the file
             self.copy_from_server_to_local(remote_name, local_name)
-            log.info("File %s has been locally cached to %s" %
+            log.info(common_msg + "File %s has been locally cached to %s" %
                      (remote_name, local_name))
-
+        elif os.path.getmtime(remote_name) > os.path.getmtime(local_name):
+            log.warning(common_msg +
+                        "File %s in cache will not be used: The remote file "
+                        "(modified %s) is newer than the locally cached file "
+                        "%s (modified %s)."
+                        % (remote_name,
+                           time.strftime(
+                               '%Y-%m-%d %H:%M:%S',
+                               time.localtime(os.path.getmtime(remote_name))
+                           ),
+                           local_name,
+                           time.strftime(
+                               '%Y-%m-%d %H:%M:%S',
+                               time.localtime(os.path.getmtime(local_name))
+                           )))
+            self.release_writelock()
+            return filename
+        elif os.path.getsize(local_name) != os.path.getsize(remote_name):
+            log.warning(common_msg +
+                        "File %s not cached: The remote file (%d bytes) is of "
+                        "a different size than the locally cached file %s "
+                        "(%d bytes). The local cache might be corrupt."
+                        % (remote_name, os.path.getsize(remote_name),
+                           local_name, os.path.getsize(local_name)))
+            self.release_writelock()
+            return filename
+        elif not os.access(local_name, os.R_OK):
+            log.warning(common_msg +
+                        "File %s in cache isn't readable. We will use the"
+                        " remote version. Manually fix the permission."
+                        % (local_name))
+            self.release_writelock()
+            return filename
         else:
-            log.info("File %s has previously been locally cached to %s" %
-                     (remote_name, local_name))
+            log.debug("File %s has previously been locally cached to %s" %
+                      (remote_name, local_name))
 
         # Obtain a readlock on the downloaded file before releasing the
         # writelock. This is to prevent having a moment where there is no
@@ -154,6 +213,37 @@ class LocalDatasetCache:
 
         command = 'cp ' + remote_fname + ' ' + local_fname
         os.system(command)
+        # Copy the original group id and file permission
+        st = os.stat(remote_fname)
+        os.chmod(local_fname, st.st_mode)
+        # If the user have read access to the data, but not a member
+        # of the group, he can't set the group. So we must catch the
+        # exception. But we still want to do this, for directory where
+        # only member of the group can read that data.
+        try:
+            os.chown(local_fname, -1, st.st_gid)
+        except OSError:
+            pass
+
+        # Need to give group write permission to the folders
+        # For the locking mechanism
+        # Try to set the original group as above
+        dirs = os.path.dirname(local_fname).replace(self.dataset_local_dir, '')
+        sep = dirs.split(os.path.sep)
+        if sep[0] == "":
+            sep = sep[1:]
+        for i in range(len(sep)):
+            orig_p = os.path.join(self.dataset_remote_dir, *sep[:i + 1])
+            new_p = os.path.join(self.dataset_local_dir, *sep[:i + 1])
+            orig_st = os.stat(orig_p)
+            new_st = os.stat(new_p)
+            if not new_st.st_mode & stat.S_IWGRP:
+                os.chmod(new_p, new_st.st_mode | stat.S_IWGRP)
+            if orig_st.st_gid != new_st.st_gid:
+                try:
+                    os.chown(new_p, -1, orig_st.st_gid)
+                except OSError:
+                    pass
 
     def disk_usage(self, path):
         """
@@ -207,7 +297,7 @@ class LocalDatasetCache:
         return ((storage_used + storage_need) <
                 (storage_total * max_disk_usage))
 
-    def safe_mkdir(self, folderName):
+    def safe_mkdir(self, folderName, force_perm=None):
         """
         Create the specified folder. If the parent folders do not
         exist, they are also created. If the folder already exists,
@@ -217,9 +307,29 @@ class LocalDatasetCache:
         ----------
         folderName : string
             Name of the folder to create
+        force_perm : mode to use for folder creation
         """
-        if not os.path.exists(folderName):
-            os.makedirs(folderName)
+        if os.path.exists(folderName):
+            return
+        intermediaryFolders = folderName.split(os.path.sep)
+
+        # Remove invalid elements from intermediaryFolders
+        if intermediaryFolders[-1] == "":
+            intermediaryFolders = intermediaryFolders[:-1]
+        if force_perm:
+            force_perm_path = folderName.split(os.path.sep)
+            if force_perm_path[-1] == "":
+                force_perm_path = force_perm_path[:-1]
+            base = len(force_perm_path) - len(intermediaryFolders)
+
+        for i in range(1, len(intermediaryFolders)):
+            folderToCreate = os.path.sep.join(intermediaryFolders[:i+1])
+
+            if os.path.exists(folderToCreate):
+                continue
+            os.mkdir(folderToCreate)
+            if force_perm:
+                os.chmod(folderToCreate, force_perm)
 
     def get_readlock(self, path):
         """

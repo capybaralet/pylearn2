@@ -12,8 +12,8 @@ __authors__ = "Ian Goodfellow"
 __copyright__ = "Copyright 2010-2012, Universite de Montreal"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
-__maintainer__ = "Ian Goodfellow"
-__email__ = "goodfeli@iro"
+__maintainer__ = "LISA Lab"
+__email__ = "pylearn-dev@googlegroups"
 
 import functools
 import logging
@@ -33,7 +33,7 @@ from pylearn2.linear.conv2d import default_seed, default_sparse_seed
 from pylearn2.linear.linear_transform import LinearTransform
 from pylearn2.sandbox.cuda_convnet import check_cuda
 from pylearn2.sandbox.cuda_convnet.filter_acts import FilterActs
-from pylearn2.sandbox.cuda_convnet.filter_acts import ImageActs
+from pylearn2.sandbox.cuda_convnet.img_acts import ImageActs
 from pylearn2.space import Conv2DSpace
 from pylearn2.utils.call_check import checked_call
 from pylearn2.utils import sharedX
@@ -50,7 +50,8 @@ class Conv2D(LinearTransform):
 
     Parameters
     ----------
-    filters : WRITEME
+    filters : Theano shared variable
+        4-tensor of shape (in channels, rows, cols, out channels)
     input_axes : WRITEME
     batch_size : WRITEME
     output_axes : WRITEME
@@ -63,16 +64,7 @@ class Conv2D(LinearTransform):
     def __init__(self, filters, input_axes=('c', 0, 1, 'b'),
                  batch_size=None, output_axes=('c', 0, 1, 'b'),
                  kernel_stride=(1, 1), pad=0, message='',
-                 partial_sum=None):
-        """
-        .. todo::
-
-            WRITEME properly
-
-        filters: Theano shared variable. 4-tensor of shape (in channels, rows,
-        cols, out channels)
-        """
-
+                 partial_sum=None, input_shape=None):
         if len(kernel_stride) != 2:
             raise ValueError("kernel_stride must have length 2")
         elif kernel_stride[0] != kernel_stride[1]:
@@ -98,6 +90,11 @@ class Conv2D(LinearTransform):
         self.pad = pad
         self.partial_sum = partial_sum
         self.kernel_stride = kernel_stride
+
+        if input_shape is not None:
+            input_shape = T.as_tensor_variable(input_shape)
+
+        self.input_shape = input_shape
 
     @functools.wraps(LinearTransform.get_params)
     def get_params(self):
@@ -189,7 +186,8 @@ class Conv2D(LinearTransform):
         x = gpu_contiguous(x)
 
         rval = ImageActs(pad=self.pad, partial_sum=self.partial_sum,
-                         stride=self.kernel_stride[0])(x, self._filters)
+                         stride=self.kernel_stride[0])(x, self._filters,
+                                 output_shape=self.input_shape)
 
         # Format the output based on the input space
         axes = self.input_axes
@@ -258,7 +256,7 @@ class Conv2D(LinearTransform):
 def make_random_conv2D(irange, input_channels, input_axes, output_axes,
                        output_channels, kernel_shape, kernel_stride=(1, 1),
                        pad=0, message="", rng=None, partial_sum=None,
-                       sparse_init=None):
+                       sparse_init=None, input_shape=None):
     """
     .. todo::
 
@@ -277,7 +275,7 @@ def make_random_conv2D(irange, input_channels, input_axes, output_axes,
 
     return Conv2D(filters=W, input_axes=input_axes, output_axes=output_axes,
                   kernel_stride=kernel_stride, pad=pad, message=message,
-                  partial_sum=partial_sum)
+                  partial_sum=partial_sum, input_shape=input_shape)
 
 
 def make_sparse_random_conv2D(num_nonzero, input_space, output_space,
@@ -343,17 +341,18 @@ def setup_detector_layer_c01b(layer, input_space, rng, irange="not specified"):
     Parameters
     ----------
     layer : object
-        Any python object that allows the modifications described below and \
-        has the following attributes: \
-        * pad: int describing amount of zero padding to add \
-        * kernel_shape: 2-element tuple or list describing spatial shape of \
-          kernel \
-        * fix_kernel_shape: bool, if true, will shrink the kernel shape to \
-          make it feasible, as needed (useful for hyperparameter searchers) \
-        * detector_channels: The number of channels in the detector layer \
-        * init_bias: numeric constant added to a tensor of zeros to \
-          initialize the bias \
-        * tied_b: If true, biases are shared across all spatial locations
+        Any python object that allows the modifications described below and
+        has the following attributes:
+
+          * pad : int describing amount of zero padding to add
+          * kernel_shape : 2-element tuple or list describing spatial shape of
+            kernel
+          * fix_kernel_shape : bool, if true, will shrink the kernel shape to
+            make it feasible, as needed (useful for hyperparameter searchers)
+          * detector_channels : The number of channels in the detector layer
+          * init_bias : numeric constant added to a tensor of zeros to
+            initialize the bias
+          * tied_b : If true, biases are shared across all spatial locations
     input_space : WRITEME
         A Conv2DSpace to be used as input to the layer
     rng : WRITEME
