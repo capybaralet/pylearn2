@@ -194,6 +194,15 @@ low-level exceptions like `KeyboardInterrupt`, `SystemExit`, etc. that
 inherit from `BaseException` instead. You almost certainly do not want your
 code to catch these.
 
+Don't raise a new exception, use the `reraise_as` method from
+`pylearn2.utils.exc` instead.::
+
+    except Exception:
+        reraise_as(ValueError("Informative error message here"))
+
+This retains the traceback and original error message, allowing for
+easier debugging using a tool like pdb.
+
 Are you checking to see if an argument is iterable?
 ===================================================
 In places where a list, tuple, or other iterable object (say, a deque)
@@ -236,6 +245,13 @@ whether you can get away with a cast.
 
 If you really need to, use `isinstance(foo, pylearn2.utils.py_complex_types)`.
 This checks against Python builtins as well as NumPy-defined complex types.
+
+Are you checking for the presence of `np.nan` or `np.inf` in an array?
+----------------------------------------------------------------------
+If so, use `pylearn2.utils.contains_nan` or `pylearn2.utils.contains_inf`.  To
+check for either `np.nan` or `np.inf`, use `pylearn2.utils.isfinite`.  These
+functions are faster and more memory effecient than `np.any(np.isnan(X))` or
+`np.any(np.isinf(X))`.
 
 Are you creating Theano functions?
 ==================================

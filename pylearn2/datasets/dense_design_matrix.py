@@ -37,7 +37,9 @@ from pylearn2.datasets.dataset import Dataset
 from pylearn2.datasets import control
 from pylearn2.space import CompositeSpace, Conv2DSpace, VectorSpace, IndexSpace
 from pylearn2.utils import safe_zip
+from pylearn2.utils.exc import reraise_as
 from pylearn2.utils.rng import make_np_rng
+from pylearn2.utils import contains_nan
 from theano import config
 
 
@@ -795,7 +797,7 @@ class DenseDesignMatrix(Dataset):
             training examples.
         axes : WRITEME
         """
-        assert not np.any(np.isnan(V))
+        assert not contains_nan(V)
         rows = V.shape[axes.index(0)]
         cols = V.shape[axes.index(1)]
         channels = V.shape[axes.index('c')]
@@ -806,7 +808,7 @@ class DenseDesignMatrix(Dataset):
         # will be used only when self.iterator is called without a
         # data_specs, and with "topo=True", which is deprecated.
         self.X_topo_space = self.view_converter.topo_space
-        assert not np.any(np.isnan(self.X))
+        assert not contains_nan(self.X)
 
         # Update data specs
         X_space = VectorSpace(dim=self.X.shape[1])
@@ -871,7 +873,7 @@ class DenseDesignMatrix(Dataset):
             WRITEME
         """
         assert len(X.shape) == 2
-        assert not np.any(np.isnan(X))
+        assert not contains_nan(X)
         self.X = X
 
     def get_targets(self):
@@ -914,9 +916,9 @@ class DenseDesignMatrix(Dataset):
             idx = self.rng.randint(self.X.shape[0] - batch_size + 1)
         except ValueError:
             if batch_size > self.X.shape[0]:
-                raise ValueError("Requested %d examples from a dataset "
-                                 "containing only %d." %
-                                 (batch_size, self.X.shape[0]))
+                reraise_as(ValueError("Requested %d examples from a dataset "
+                                      "containing only %d." %
+                                      (batch_size, self.X.shape[0])))
             raise
         rx = self.X[idx:idx + batch_size, :]
         if include_labels:
@@ -1187,7 +1189,7 @@ class DenseDesignMatrixPyTables(DenseDesignMatrix):
             WRITEME
         """
         assert len(X.shape) == 2
-        assert not np.any(np.isnan(X))
+        assert not contains_nan(X)
         DenseDesignMatrixPyTables.fill_hdf5(file_handle=self.h5file,
                                             data_x=X,
                                             start=start)
@@ -1211,14 +1213,14 @@ class DenseDesignMatrixPyTables(DenseDesignMatrix):
             WRITEME
         start : WRITEME
         """
-        assert not np.any(np.isnan(V))
+        assert not contains_nan(V)
         rows = V.shape[axes.index(0)]
         cols = V.shape[axes.index(1)]
         channels = V.shape[axes.index('c')]
         self.view_converter = DefaultViewConverter([rows, cols, channels],
                                                    axes=axes)
         X = self.view_converter.topo_view_to_design_mat(V)
-        assert not np.any(np.isnan(X))
+        assert not contains_nan(X)
         DenseDesignMatrixPyTables.fill_hdf5(file_handle=self.h5file,
                                             data_x=X,
                                             start=start)
@@ -1309,7 +1311,7 @@ class DenseDesignMatrixPyTables(DenseDesignMatrix):
         y = h5file.createCArray(gcolumns,
                                 'y',
                                 atom=atom,
-                                shape=((stop - start, 10)),
+                                shape=((stop - start, data.y.shape[1])),
                                 title="Data targets",
                                 filters=self.filters)
         x[:] = data.X[start:stop]
@@ -1510,7 +1512,7 @@ def from_dataset(dataset, num_examples):
 
         V, y = dataset.get_batch_topo(num_examples, True)
 
-    except:
+    except TypeError:
 
         # This patches a case where control.get_load_data() is false so
         # dataset.X is None This logic should be removed whenever we implement
