@@ -44,6 +44,7 @@ from pylearn2.utils import wraps
 from pylearn2.utils import contains_nan
 from pylearn2.utils import contains_inf
 from pylearn2.utils import isfinite
+from pylearn2.utils import serial
 from pylearn2.utils.data_specs import DataSpecsMapping
 
 from pylearn2.expr.nnet import (elemwise_kl, kl, compute_precision,
@@ -427,7 +428,7 @@ class MLP(Layer):
 
     def __init__(self, layers, batch_size=None, input_space=None,
                  input_source='features', nvis=None, seed=None,
-                 layer_name=None, **kwargs):
+                 layer_name=None, pretrained_model_path=None, new_layers=None, **kwargs):
         super(MLP, self).__init__(**kwargs)
 
         self.seed = seed
@@ -489,6 +490,12 @@ class MLP(Layer):
                 return None
             return 1. / x
 
+        if pretrained_model_path is not None:
+            self = serial.load(pretrained_model_path)
+            if new_layers is not None:
+                self.add_layers(new_layers)
+
+
     @property
     def input_source(self):
         assert not self._nested, "A nested MLP does not have an input source"
@@ -518,7 +525,7 @@ class MLP(Layer):
 
     @wraps(Layer.get_target_space)
     def get_target_space(self):
-        
+
         return self.layers[-1].get_target_space()
 
     @wraps(Layer.set_input_space)
