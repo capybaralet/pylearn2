@@ -20,9 +20,14 @@ from theano.tensor.nnet.conv import conv2d
 from pylearn2.packaged_dependencies.theano_linear.conv2d \
     import Conv2d as OrigConv2D
 
+from theano.sandbox.cuda.blas import GpuCorrMM
+from theano.sandbox.cuda.basic_ops import gpu_contiguous
+
 from pylearn2.linear.linear_transform import LinearTransform as P2LT
 from pylearn2.utils import sharedX
 from pylearn2.utils.rng import make_np_rng
+
+import warnings
 
 
 default_seed = [2012, 11, 6, 9]
@@ -112,6 +117,7 @@ class Conv2D(OrigConv2D):
                 axes.index(0),
                 axes.index(1))
 
+        """
         rval = conv2d(
             x, self._filters,
             image_shape=self._img_shape,
@@ -119,6 +125,14 @@ class Conv2D(OrigConv2D):
             subsample=self._subsample,
             border_mode=self._border_mode,
         )
+        """
+
+        warnings.warn("hacky lmul called!")
+        if self._border_mode == 'valid':
+            return GpuCorrMM(subsample=self._subsample, border_mode=self._border_mode)(gpu_contiguous(x), gpu_contiguous(self._filters[:,:,::-1,::-1]))
+        if self._border_mode == 'full':
+            return GpuCorrMM(subsample=self._subsample, pad=self._border_mode)(gpu_contiguous(x), gpu_contiguous(self._filters[:,:,::-1,::-1]))
+
 
         # Format the output based on the output space
         axes = self.output_axes

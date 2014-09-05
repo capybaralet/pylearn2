@@ -3713,6 +3713,375 @@ class ConvRectifiedLinear(ConvElemwise):
                                                   monitor_style=monitor_style)
 
 
+class ConvRectifiedLinear(Layer):
+    """
+    A convolutional rectified linear layer, based on theano's B01C formatted
+    convolution.
+
+    Parameters
+    ----------
+    output_channels : int
+        The number of output channels the layer should have.
+    kernel_shape : tuple
+        The shape of the convolution kernel.
+    pool_shape : tuple
+        The shape of the spatial max pooling. A two-tuple of ints.
+    pool_stride : tuple
+        The stride of the spatial max pooling. Also must be square.
+    layer_name : str
+        A name for this layer that will be prepended to monitoring channels
+        related to this layer.
+    irange : float
+        if specified, initializes each weight randomly in
+        U(-irange, irange)
+    border_mode : str
+        A string indicating the size of the output:
+
+        - "full" : The output is the full discrete linear convolution of the
+            inputs.
+        - "valid" : The output consists only of those elements that do not
+            rely on the zero-padding. (Default)
+    include_prob : float
+        probability of including a weight element in the set of weights
+        initialized to U(-irange, irange). If not included it is initialized
+        to 0.
+    init_bias : float
+        All biases are initialized to this number
+    W_lr_scale: float
+        The learning rate on the weights for this layer is multiplied by this
+        scaling factor
+    b_lr_scale : float
+        The learning rate on the biases for this layer is multiplied by this
+        scaling factor
+    left_slope: float
+        The slope of the left half of the activation function
+    max_kernel_norm : float
+        If specifed, each kernel is constrained to have at most this norm.
+    pool_type : WRITEME
+        The type of the pooling operation performed the the convolution.
+        Default pooling type is max-pooling. WRITEME
+    tied_b : bool
+        If true, all biases in the same channel are constrained to be the
+        same as each other. Otherwise, each bias at each location is
+        learned independently.
+    detector_normalization : callable
+        See `output_normalization`
+    output_normalization : callable
+        if specified, should be a callable object. the state of the
+        network is optionally replaced with normalization(state) at each
+        of the 3 points in processing:
+
+        - detector: the maxout units can be normalized prior to the
+            spatial pooling
+        - output: the output of the layer, after sptial pooling, can
+            be normalized as well
+
+        WRITEME: is there input_normalization for thiss class?
+    kernel_stride: The stride of the convolution kernel. A two-tuple of
+        ints.
+    """
+    def __init__(self,
+                 output_channels,
+                 kernel_shape,
+                 pool_shape,
+                 pool_stride,
+                 layer_name,
+                 irange=None,
+                 border_mode='valid',
+                 sparse_init=None,
+                 include_prob=1.0,
+                 init_bias=0.,
+                 W_lr_scale=None,
+                 b_lr_scale=None,
+                 left_slope=0.0,
+                 max_kernel_norm=None,
+                 pool_type='max',
+                 tied_b=False,
+                 detector_normalization=None,
+                 output_normalization=None,
+                 kernel_stride=(1, 1)):
+        super(ConvRectifiedLinear, self).__init__()
+
+
+        if (irange is None) and (sparse_init is None):
+            raise AssertionError("You should specify either irange or "
+                                 "sparse_init when calling the constructor of "
+                                 "ConvRectifiedLinear.")
+        elif (irange is not None) and (sparse_init is not None):
+            raise AssertionError("You should specify either irange or "
+                                 "sparse_init when calling the constructor of "
+                                 "ConvRectifiedLinear and not both.")
+
+        self.__dict__.update(locals())
+        del self.self
+
+    @wraps(Layer.get_lr_scalers)
+    def get_lr_scalers(self):
+
+        if not hasattr(self, 'W_lr_scale'):
+            self.W_lr_scale = None
+
+        if not hasattr(self, 'b_lr_scale'):
+            self.b_lr_scale = None
+
+        rval = OrderedDict()
+
+        if self.W_lr_scale is not None:
+            W, = self.transformer.get_params()
+            rval[W] = self.W_lr_scale
+
+        if self.b_lr_scale is not None:
+            rval[self.b] = self.b_lr_scale
+
+        return rval
+
+    @wraps(Layer.set_input_space)
+    def set_input_space(self, space):
+
+        self.input_space = space
+
+        if not isinstance(space, Conv2DSpace):
+            raise BadInputSpaceError("ConvRectifiedLinear.set_input_space "
+                                     "expected a Conv2DSpace, got " +
+                                     str(space) + " of type " +
+                                     str(type(space)))
+
+        rng = self.mlp.rng
+
+        if self.border_mode == 'valid':
+            output_shape = [(self.input_space.shape[0]-self.kernel_shape[0]) /
+                            self.kernel_stride[0] + 1,
+                            (self.input_space.shape[1]-self.kernel_shape[1]) /
+                            self.kernel_stride[1] + 1]
+        elif self.border_mode == 'full':
+            output_shape = [(self.input_space.shape[0]+self.kernel_shape[0]) /
+                            self.kernel_stride[0] - 1,
+                            (self.input_space.shape[1]+self.kernel_shape[1]) /
+                            self.kernel_stride[1] - 1]
+
+        self.detector_space = Conv2DSpace(shape=output_shape,
+                                          num_channels=self.output_channels,
+                                          axes=('b', 'c', 0, 1))
+
+        if self.irange is not None:
+            assert self.sparse_init is None
+            self.transformer = conv2d.make_random_conv2D(
+                irange=self.irange,
+                input_space=self.input_space,
+                output_space=self.detector_space,
+                kernel_shape=self.kernel_shape,
+                batch_size=self.mlp.batch_size,
+                subsample=self.kernel_stride,
+                border_mode=self.border_mode,
+                rng=rng)
+        elif self.sparse_init is not None:
+            self.transformer = conv2d.make_sparse_random_conv2D(
+                num_nonzero=self.sparse_init,
+                input_space=self.input_space,
+                output_space=self.detector_space,
+                kernel_shape=self.kernel_shape,
+                batch_size=self.mlp.batch_size,
+                subsample=self.kernel_stride,
+                border_mode=self.border_mode,
+                rng=rng)
+        W, = self.transformer.get_params()
+        W.name = 'W'
+
+        if self.tied_b:
+            self.b = sharedX(np.zeros((self.detector_space.num_channels)) +
+                             self.init_bias)
+        else:
+            self.b = sharedX(self.detector_space.get_origin() + self.init_bias)
+        self.b.name = 'b'
+
+        print 'Input shape: ', self.input_space.shape
+        print 'Detector space: ', self.detector_space.shape
+
+        assert self.pool_type in ['max', 'mean']
+
+        dummy_batch_size = self.mlp.batch_size
+        if dummy_batch_size is None:
+            dummy_batch_size = 2
+        dummy_detector = sharedX(
+            self.detector_space.get_origin_batch(dummy_batch_size))
+        if self.pool_type == 'max':
+            dummy_p = max_pool(bc01=dummy_detector,
+                               pool_shape=self.pool_shape,
+                               pool_stride=self.pool_stride,
+                               image_shape=self.detector_space.shape)
+        elif self.pool_type == 'mean':
+            dummy_p = mean_pool(bc01=dummy_detector,
+                                pool_shape=self.pool_shape,
+                                pool_stride=self.pool_stride,
+                                image_shape=self.detector_space.shape)
+        dummy_p = dummy_p.eval()
+        self.output_space = Conv2DSpace(shape=[dummy_p.shape[2],
+                                               dummy_p.shape[3]],
+                                        num_channels=self.output_channels,
+                                        axes=('b', 'c', 0, 1))
+
+        print 'Output space: ', self.output_space.shape
+
+    @wraps(Layer.censor_updates)
+    def censor_updates(self, updates):
+        """
+        .. todo::
+
+            WRITEME
+        """
+
+        if self.max_kernel_norm is not None:
+            W, = self.transformer.get_params()
+            if W in updates:
+                updated_W = updates[W]
+                row_norms = T.sqrt(T.sum(T.sqr(updated_W), axis=(1, 2, 3)))
+                desired_norms = T.clip(row_norms, 0, self.max_kernel_norm)
+                scales = desired_norms / (1e-7 + row_norms)
+                updates[W] = updated_W * scales.dimshuffle(0, 'x', 'x', 'x')
+
+    @wraps(Layer.get_params)
+    def get_params(self):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        assert self.b.name is not None
+        W, = self.transformer.get_params()
+        assert W.name is not None
+        rval = self.transformer.get_params()
+        assert not isinstance(rval, set)
+        rval = list(rval)
+        assert self.b not in rval
+        rval.append(self.b)
+        return rval
+
+    @wraps(Layer.get_weight_decay)
+    def get_weight_decay(self, coeff):
+
+        if isinstance(coeff, str):
+            coeff = float(coeff)
+        assert isinstance(coeff, float) or hasattr(coeff, 'dtype')
+        W, = self.transformer.get_params()
+        return coeff * T.sqr(W).sum()
+
+    @wraps(Layer.get_l1_weight_decay)
+    def get_l1_weight_decay(self, coeff):
+
+        if isinstance(coeff, str):
+            coeff = float(coeff)
+        assert isinstance(coeff, float) or hasattr(coeff, 'dtype')
+        W, = self.transformer.get_params()
+        return coeff * abs(W).sum()
+
+    @wraps(Layer.set_weights)
+    def set_weights(self, weights):
+
+        W, = self.transformer.get_params()
+        W.set_value(weights)
+
+    @wraps(Layer.set_biases)
+    def set_biases(self, biases):
+
+        self.b.set_value(biases)
+
+    @wraps(Layer.get_biases)
+    def get_biases(self):
+
+        return self.b.get_value()
+
+    @wraps(Layer.get_weights_format)
+    def get_weights_format(self):
+
+        return ('v', 'h')
+
+    @wraps(Layer.get_weights_topo)
+    def get_weights_topo(self):
+
+        outp, inp, rows, cols = range(4)
+        raw = self.transformer._filters.get_value()
+
+        return np.transpose(raw, (outp, rows, cols, inp))
+
+    @wraps(Layer.get_monitoring_channels)
+    def get_monitoring_channels(self):
+
+        W, = self.transformer.get_params()
+
+        assert W.ndim == 4
+
+        sq_W = T.sqr(W)
+
+        row_norms = T.sqrt(sq_W.sum(axis=(1, 2, 3)))
+
+        return OrderedDict([('kernel_norms_min',  row_norms.min()),
+                            ('kernel_norms_mean', row_norms.mean()),
+                            ('kernel_norms_max',  row_norms.max()), ])
+
+    @wraps(Layer.fprop)
+    def fprop(self, state_below):
+
+        self.input_space.validate(state_below)
+
+        z = self.transformer.lmul(state_below)
+        if not hasattr(self, 'tied_b'):
+            self.tied_b = False
+        if self.tied_b:
+            b = self.b.dimshuffle('x', 0, 'x', 'x')
+        else:
+            b = self.b.dimshuffle('x', 0, 1, 2)
+
+        z = z + b
+
+        d = z * (z > 0.) + self.left_slope * z * (z < 0.)
+
+        self.detector_space.validate(d)
+
+        if not hasattr(self, 'detector_normalization'):
+            self.detector_normalization = None
+
+        if self.detector_normalization:
+            d = self.detector_normalization(d)
+
+        assert self.pool_type in ['max', 'mean']
+        if self.pool_type == 'max':
+            p = max_pool(bc01=d,
+                         pool_shape=self.pool_shape,
+                         pool_stride=self.pool_stride,
+                         image_shape=self.detector_space.shape)
+        elif self.pool_type == 'mean':
+            p = mean_pool(bc01=d,
+                          pool_shape=self.pool_shape,
+                          pool_stride=self.pool_stride,
+                          image_shape=self.detector_space.shape)
+
+        self.output_space.validate(p)
+
+        if not hasattr(self, 'output_normalization'):
+            self.output_normalization = None
+
+        if self.output_normalization:
+            p = self.output_normalization(p)
+
+        return p
+
+    @wraps(Layer.get_default_cost)
+    def get_default_cost(self):
+        return Default()
+
+    @wraps(Layer.cost)
+    def cost(self, Y, Y_hat):
+        return self.cost_from_cost_matrix(self.cost_matrix(Y, Y_hat))
+
+    @wraps(Layer.cost_from_cost_matrix)
+    def cost_from_cost_matrix(self, cost_matrix):
+        return cost_matrix.sum(axis=1).mean()
+
+    @wraps(Layer.cost_matrix)
+    def cost_matrix(self, Y, Y_hat):
+        return T.sqr(Y - Y_hat)
+
+
 def max_pool(bc01, pool_shape, pool_stride, image_shape):
     """
     Theano's max pooling op only supports pool_stride = pool_shape
